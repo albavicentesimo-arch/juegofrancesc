@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ARCHIVO 001 — Nivel 5: El Mapa del Tesoro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --parchment: #e6cfa0;
+    --parchment-dark: #c9a86a;
+    --ink: #3b2718;
+    --gold: #b8860b;
+    --red-x: #9c2b1f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    min-height:100%;
+    background: radial-gradient(circle at 50% 0%, #3a2b1a, #1c130b 70%);
+    color: var(--ink);
+    font-family: 'IM Fell English', serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 16px 12px 24px;
+    touch-action: pan-y;
+  }
+  h1{
+    font-family: 'Pirata One', cursive;
+    font-size: 1.9rem;
+    letter-spacing: 1px;
+    color: var(--gold);
+    margin: 4px 0;
+    text-align:center;
+    text-shadow: 0 0 10px rgba(184,134,11,0.4);
+  }
+  p.sub{
+    color: #d8c39a;
+    margin-top:0;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+    text-align:center;
+    font-style: italic;
+  }
+ 
+  #gameWrap{
+    position: relative;
+    border: 10px solid #4a3420;
+    border-radius: 4px;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(120,90,50,0.25), transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(120,90,50,0.25), transparent 40%),
+      radial-gradient(circle at 60% 20%, rgba(90,60,30,0.2), transparent 35%),
+      linear-gradient(160deg, var(--parchment), var(--parchment-dark) 90%);
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    box-shadow: 0 0 0 3px #2b1d10, 0 12px 24px rgba(0,0,0,0.6);
+  }
+  /* manchas/bordes quemados del pergamino */
+  #gameWrap::before{
+    content:'';
+    position:absolute;
+    inset:0;
+    box-shadow: inset 0 0 40px 10px rgba(59,39,24,0.55);
+    pointer-events:none;
+    z-index: 3;
+  }
+  .burnCorner{
+    position:absolute;
+    width: 70px; height: 70px;
+    background: radial-gradient(circle at 100% 100%, rgba(59,39,24,0.6), transparent 70%);
+    pointer-events:none;
+    z-index: 3;
+  }
+  .burnCorner.tl{ top:0; left:0; transform: rotate(180deg); }
+  .burnCorner.tr{ top:0; right:0; transform: rotate(270deg); }
+  .burnCorner.bl{ bottom:0; left:0; transform: rotate(90deg); }
+  .burnCorner.br{ bottom:0; right:0; }
+ 
+  svg#route{ position:absolute; inset:0; width:100%; height:100%; z-index:1; }
+  svg#route path{
+    fill:none;
+    stroke: var(--ink);
+    stroke-width: 2.5;
+    stroke-dasharray: 3 7;
+    opacity: 0.55;
+  }
+ 
+  .compass{
+    position:absolute;
+    top: 4%;
+    right: 5%;
+    font-size: 1.8rem;
+    opacity: 0.5;
+    z-index:1;
+  }
+  .decor{
+    position:absolute;
+    font-size: 1.6rem;
+    opacity: 0.4;
+    z-index:1;
+  }
+ 
+  .pin{
+    position:absolute;
+    transform: translate(-50%, -50%);
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: var(--parchment);
+    border: 2px solid var(--ink);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size: 1rem;
+    font-family: 'Pirata One', cursive;
+    color: var(--ink);
+    cursor:pointer;
+    z-index: 2;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .pin.locked{ opacity: 0.5; }
+  .pin.visited{
+    background: var(--gold);
+    border-color: var(--red-x);
+    color: #2b1d10;
+  }
+  .pin.active{
+    border-color: var(--red-x);
+    animation: pulse 1.3s infinite;
+  }
+  @keyframes pulse{
+    0%,100%{ transform: translate(-50%,-50%) scale(1); }
+    50%{ transform: translate(-50%,-50%) scale(1.15); }
+  }
+ 
+  #treasureSpot{
+    position:absolute;
+    transform: translate(-50%, -50%);
+    font-size: 2rem;
+    z-index: 2;
+    filter: grayscale(1) opacity(0.5);
+  }
+  #treasureSpot.active{ filter:none; }
+ 
+  #overlay, #memoryCard, #finalScreen{
+    position:absolute;
+    inset:0;
+    background: rgba(28,19,11,0.94);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 22px;
+    z-index: 5;
+  }
+  #overlay.hidden, #memoryCard.hidden, #finalScreen.hidden{ display:none; }
+  #overlay h2, #memoryCard h2, #finalScreen h2{
+    font-family: 'Pirata One', cursive;
+    color: var(--gold);
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  #overlay p, #memoryCard p, #finalScreen p{ color:#e6d3ad; max-width: 290px; line-height:1.6; font-size: 0.95rem; font-style: italic;}
+  button.mainBtn{
+    margin-top: 18px;
+    padding: 10px 24px;
+    background: var(--gold);
+    border: 2px solid var(--ink);
+    border-radius: 6px;
+    color: #2b1d10;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.1rem;
+    letter-spacing:1px;
+    cursor:pointer;
+  }
+  button.mainBtn:active{ transform: scale(0.96); }
+ 
+  #fragments{
+    display:flex;
+    gap: 8px;
+    margin: 14px 0;
+    flex-wrap: wrap;
+    justify-content:center;
+  }
+  .frag{
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    background: #4a3420;
+    opacity: 0.3;
+    transition: opacity .4s ease, background .4s ease;
+  }
+  .frag.on{
+    background: var(--gold);
+    opacity: 1;
+  }
+ 
+  #codeBox{
+    margin-top: 14px;
+    padding: 12px 24px;
+    border: 2px dashed var(--gold);
+    border-radius: 8px;
+    font-family: 'Pirata One', cursive;
+    font-size: 1.5rem;
+    letter-spacing: 6px;
+    color: var(--gold);
+  }
+ 
+  #tapHint{
+    margin-top: 14px;
+    color:#c9b384;
+    font-size:.8rem;
+    text-align:center;
+    font-style: italic;
+  }
+</style>
+</head>
+<body>
+ 
+  <h1>El Mapa del Tesoro</h1>
+  <p class="sub">Recorre los 7 puntos marcados, en orden, hasta llegar al tesoro</p>
+ 
+  <div id="gameWrap">
+    <svg id="route" viewBox="0 0 100 133" preserveAspectRatio="none">
+      <path d="M 15,18 Q 40,8 55,22 T 82,20 Q 90,40 70,45 T 78,68 Q 60,75 45,62 T 18,58 Q 8,75 25,88 T 55,95" />
+      <!-- rosa de los vientos decorativa -->
+      <g stroke="#3b2718" stroke-width="0.4" opacity="0.25">
+        <line x1="88" y1="6" x2="88" y2="22"/>
+        <line x1="80" y1="14" x2="96" y2="14"/>
+        <line x1="82.5" y1="8.5" x2="93.5" y2="19.5"/>
+        <line x1="93.5" y1="8.5" x2="82.5" y2="19.5"/>
+      </g>
+    </svg>
+ 
+    <div class="burnCorner tl"></div>
+    <div class="burnCorner tr"></div>
+    <div class="burnCorner bl"></div>
+    <div class="burnCorner br"></div>
+ 
+    <div class="compass">🧭</div>
+    <div class="decor" style="left:8%; bottom:4%;">🌴</div>
+    <div class="decor" style="right:10%; top:42%; font-size:1.2rem;">🐉</div>
+    <div class="decor" style="left:6%; top:34%; font-size:1.3rem; opacity:0.3;">⚓</div>
+    <div class="decor" style="right:6%; bottom:20%; font-size:1.2rem; opacity:0.3;">🦜</div>
+    <div class="decor" style="left:40%; top:6%; font-size:1rem; opacity:0.35;">☠️</div>
+    <div class="decor" style="right:32%; bottom:6%; font-size:1.1rem; opacity:0.3;">🐚</div>
+    <div class="decor" style="left:14%; top:66%; font-size:1rem; opacity:0.3;">👣</div>
+    <div class="decor" style="left:20%; top:70%; font-size:1rem; opacity:0.3; transform: rotate(20deg);">👣</div>
+    <div class="decor" style="right:15%; top:8%; font-size:1.1rem; opacity:0.3;">🚢</div>
+    <div class="decor" style="left:65%; bottom:30%; font-size:1.1rem; opacity:0.3;">💰</div>
+    <div id="treasureSpot">🏴‍☠️</div>
+ 
+    <!-- Los pines se generan por JS a partir de WAYPOINTS -->
+ 
+    <div id="overlay">
+      <h2>¿Listos, piratas?</h2>
+      <p>Este es el mapa de vuestra historia. Seguid la ruta punteada y tocad cada punto en orden para revivir un recuerdo.</p>
+      <button class="mainBtn" id="startBtn">Zarpar</button>
+    </div>
+ 
+    <div id="memoryCard" class="hidden">
+      <h2 id="memoryTitle">Recuerdo</h2>
+      <p id="memoryText">Texto del recuerdo</p>
+      <button class="mainBtn" id="memoryContinueBtn">Seguir</button>
+    </div>
+ 
+    <div id="finalScreen" class="hidden">
+      <h2>¡TESORO ENCONTRADO!</h2>
+      <p>Has recuperado los 5 fragmentos del regalo.</p>
+      <div id="fragments">
+        <div class="frag"></div><div class="frag"></div><div class="frag"></div>
+        <div class="frag"></div><div class="frag"></div>
+      </div>
+      <p>Pero hay algo que no aparece en ningún mapa: la persona que dibujó este, para ti. ❤️</p>
+      <div id="codeBox">••••</div>
+      <p style="margin-top:10px; font-size:.75rem;">
+        (Este código puede abrir una caja real con el regalo dentro)
+      </p>
+      <button class="mainBtn" id="homeBtn" style="margin-top:14px;">Volver a inicio</button>
+    </div>
+  </div>
+ 
+  <p id="tapHint">👆 Toca cada punto del mapa en orden</p>
+ 
+<script>
+// ------------------------------------------------------
+// WAYPOINTS: 7 puntos en vez de 3, posición en % dentro del
+// tablero + el "recuerdo" que se muestra al tocarlos.
+// Edítalos con vuestros lugares y frases reales.
+// ------------------------------------------------------
+const WAYPOINTS = [
+  { xPct: 15, yPct: 14, title: 'Punto 1', text: '(Dónde os conocisteis)' },
+  { xPct: 42, yPct: 17, title: 'Punto 2', text: '(Vuestra primera cita)' },
+  { xPct: 68, yPct: 15, title: 'Punto 3', text: '(Un momento gracioso juntos)' },
+  { xPct: 80, yPct: 38, title: 'Punto 4', text: '(Un viaje que hicisteis)' },
+  { xPct: 55, yPct: 50, title: 'Punto 5', text: '(Algo que os hizo más fuertes)' },
+  { xPct: 25, yPct: 55, title: 'Punto 6', text: '(Un recuerdo reciente)' },
+  { xPct: 45, yPct: 78, title: 'Punto 7', text: '(Por qué le queréis)' },
+];
+ 
+const FINAL_CODE = '1807';
+ 
+const gameWrap = document.getElementById('gameWrap');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const memoryCard = document.getElementById('memoryCard');
+const memoryTitle = document.getElementById('memoryTitle');
+const memoryText = document.getElementById('memoryText');
+const memoryContinueBtn = document.getElementById('memoryContinueBtn');
+const finalScreen = document.getElementById('finalScreen');
+const treasureSpot = document.getElementById('treasureSpot');
+ 
+let visited = 0;
+let gameRunning = false;
+let pinsEls = [];
+ 
+// posición final del tesoro, un poco después del último waypoint
+const TREASURE_POS = { xPct: 55, yPct: 92 };
+treasureSpot.style.left = TREASURE_POS.xPct + '%';
+treasureSpot.style.top = TREASURE_POS.yPct + '%';
+ 
+function buildPins(){
+  gameWrap.querySelectorAll('.pin').forEach(p => p.remove());
+  pinsEls = WAYPOINTS.map((wp, i) => {
+    const el = document.createElement('div');
+    el.className = 'pin locked';
+    el.textContent = i + 1;
+    el.style.left = wp.xPct + '%';
+    el.style.top = wp.yPct + '%';
+    el.addEventListener('click', () => handlePinClick(i));
+    gameWrap.appendChild(el);
+    return el;
+  });
+  updatePinStates();
+}
+ 
+function updatePinStates(){
+  pinsEls.forEach((el, i) => {
+    el.classList.remove('locked', 'active', 'visited');
+    if (i < visited) el.classList.add('visited');
+    else if (i === visited) el.classList.add('active');
+    else el.classList.add('locked');
+  });
+  treasureSpot.classList.toggle('active', visited >= WAYPOINTS.length);
+}
+ 
+function handlePinClick(i){
+  if (!gameRunning) return;
+  if (i !== visited) return;
+ 
+  const wp = WAYPOINTS[i];
+  memoryTitle.textContent = wp.title;
+  memoryText.textContent = wp.text;
+  memoryCard.classList.remove('hidden');
+}
+ 
+memoryContinueBtn.addEventListener('click', () => {
+  memoryCard.classList.add('hidden');
+  visited++;
+  updatePinStates();
+  if (visited >= WAYPOINTS.length){
+    setTimeout(showFinal, 300);
+  }
+});
+ 
+function showFinal(){
+  gameRunning = false;
+  // marcamos el juego entero como completado en localStorage
+  localStorage.setItem('regaloProgress', '6');
+  finalScreen.classList.remove('hidden');
+  const frags = finalScreen.querySelectorAll('.frag');
+  frags.forEach((f, i) => {
+    setTimeout(() => f.classList.add('on'), 300 + i * 350);
+  });
+  setTimeout(() => {
+    document.getElementById('codeBox').textContent = FINAL_CODE;
+  }, 300 + frags.length * 350 + 400);
+}
+ 
+document.addEventListener('DOMContentLoaded', () => {
+  const homeBtn = document.getElementById('homeBtn');
+  if (homeBtn) homeBtn.addEventListener('click', () => { window.location.href = "index.html"; });
+});
+ 
+function startGame(){
+  overlay.classList.add('hidden');
+  visited = 0;
+  gameRunning = true;
+  buildPins();
+}
+ 
+startBtn.addEventListener('click', startGame);
+ 
+buildPins();
+</script>
+ 
+</body>
+</html>
+

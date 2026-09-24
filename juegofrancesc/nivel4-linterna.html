@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ARCHIVO 001 — Nivel 4: La Casa Abandonada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Nosifer&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #050403;
+    --blood: #8a0f0f;
+    --paper: #cfc7ad;
+    --fog: rgba(180,180,170,0.06);
+    --warm-gold: #e8b84b;
+    --warm-bg: #2a1d10;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    min-height:100%;
+    background: #000;
+    color: var(--paper);
+    font-family: 'Nosifer', 'Creepster', cursive;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 16px 12px 24px;
+    touch-action: none;
+    transition: background 1.2s ease;
+  }
+  body.lights-on{
+    background: radial-gradient(circle at 50% 20%, #3a2812, var(--warm-bg));
+  }
+ 
+  h1{
+    font-family: 'Creepster', cursive;
+    font-size: 1.6rem;
+    letter-spacing: 2px;
+    color: var(--blood);
+    margin: 6px 0;
+    text-align:center;
+    text-shadow: 0 0 10px rgba(138,15,15,0.8), 0 0 2px #000;
+    transition: color 1s ease, text-shadow 1s ease;
+  }
+  body.lights-on h1{
+    color: var(--warm-gold);
+    text-shadow: 0 0 12px rgba(232,184,75,0.6);
+  }
+  p.sub{
+    color: #9a9482;
+    margin-top:0;
+    margin-bottom: 10px;
+    font-size: 0.7rem;
+    text-align:center;
+    font-family: 'Nosifer', cursive;
+    letter-spacing: 0.5px;
+  }
+  #hud{
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    color: var(--blood);
+    font-family: 'Nosifer', cursive;
+    text-shadow: 0 0 6px rgba(138,15,15,0.6);
+  }
+ 
+  /* frase secreta: huecos que se van rellenando */
+  #phraseRow{
+    display:flex;
+    flex-wrap: wrap;
+    justify-content:center;
+    gap: 6px;
+    margin-bottom: 10px;
+    max-width: 400px;
+  }
+  .wordSlot{
+    font-family: 'IM Fell English', serif;
+    font-size: 0.85rem;
+    color: #5a5648;
+    letter-spacing: 1px;
+    padding: 2px 4px;
+    border-bottom: 1px dashed #4a4638;
+  }
+  .wordSlot.revealed{
+    color: var(--blood);
+    border-bottom-color: var(--blood);
+    font-weight: bold;
+  }
+ 
+  #gameWrap{
+    position: relative;
+    border: 3px solid #2a2520;
+    border-radius: 6px;
+    background: #000;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.9), inset 0 0 60px rgba(0,0,0,0.8);
+  }
+ 
+  #scene{
+    position:absolute;
+    inset:0;
+    background:
+      radial-gradient(circle at 15% 10%, rgba(255,255,255,0.03), transparent 30%),
+      radial-gradient(circle at 85% 85%, rgba(255,255,255,0.03), transparent 30%),
+      repeating-linear-gradient(90deg, #12100d 0px, #12100d 38px, #0c0a08 38px, #0c0a08 40px),
+      #100d0a;
+  }
+  .cobweb{
+    position:absolute;
+    font-size: 2.4rem;
+    opacity: 0.35;
+    filter: grayscale(1);
+  }
+  .fogLayer{
+    position:absolute;
+    inset:-20%;
+    background: radial-gradient(circle, var(--fog) 0%, transparent 60%);
+    animation: driftFog 14s ease-in-out infinite alternate;
+    pointer-events:none;
+  }
+  @keyframes driftFog{
+    0%{ transform: translate(-4%, -2%) scale(1); }
+    100%{ transform: translate(4%, 3%) scale(1.15); }
+  }
+ 
+  .hiddenObject{
+    position:absolute;
+    font-size: 1.9rem;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 4px rgba(0,0,0,0.8));
+    transition: filter .15s ease;
+  }
+  .hiddenObject.found{ filter: drop-shadow(0 0 12px var(--blood)); }
+ 
+  #darkLayer{
+    position:absolute;
+    inset:0;
+    background: radial-gradient(circle 70px at 50% 50%, transparent 0%, transparent 50%, rgba(2,2,1,0.98) 72%);
+    pointer-events:none;
+    transition: opacity 1.2s ease;
+  }
+  #darkLayer.off{ opacity: 0; }
+ 
+  #foundList{
+    display:flex;
+    flex-wrap: wrap;
+    justify-content:center;
+    gap:6px;
+    margin-top: 12px;
+    font-size: 1.1rem;
+    max-width: 300px;
+  }
+  #foundList span{ opacity: 0.2; filter: grayscale(1); }
+  #foundList span.on{ opacity: 1; filter: none; }
+ 
+  #overlay, #foundCard, #twistScreen, #finalMessage{
+    position:absolute;
+    inset:0;
+    background: rgba(3,2,1,0.96);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 22px;
+    z-index: 5;
+  }
+  #overlay.hidden, #foundCard.hidden, #twistScreen.hidden, #finalMessage.hidden{ display:none; }
+  #overlay h2, #foundCard h2, #twistScreen h2, #finalMessage h2{
+    color: var(--blood); font-size: 1.3rem; margin-bottom: 10px;
+    font-family:'Creepster', cursive; text-shadow: 0 0 8px rgba(138,15,15,0.7);
+  }
+  #overlay p, #foundCard p, #twistScreen p, #finalMessage p{
+    color:#b7ae94; max-width: 280px; line-height:1.6; font-size: 0.78rem; font-family: 'Nosifer', cursive;
+  }
+  #foundCard .word{
+    font-family: 'Creepster', cursive;
+    font-size: 2rem;
+    color: var(--warm-gold);
+    margin: 10px 0;
+    text-shadow: 0 0 10px rgba(232,184,75,0.5);
+  }
+  #foundCard .note{
+    margin-top: 14px;
+    font-family: 'IM Fell English', serif;
+    font-style: italic;
+    color: #7a7565;
+    font-size: 0.85rem;
+  }
+ 
+  #twistScreen{ background: rgba(42,29,16,0.97); }
+  #twistScreen h2{
+    color: var(--warm-gold);
+    text-shadow: 0 0 14px rgba(232,184,75,0.7);
+    font-size: 1.5rem;
+  }
+  #twistScreen p{ color: #e6d3ad; font-family: 'IM Fell English', serif; font-size: 1rem; font-style: italic; }
+  #twistScreen .phraseFinal{
+    font-family: 'Creepster', cursive;
+    font-size: 1.4rem;
+    color: var(--warm-gold);
+    margin: 14px 0;
+    line-height: 1.6;
+    text-shadow: 0 0 10px rgba(232,184,75,0.5);
+  }
+ 
+  #finalMessage{ background: rgba(42,29,16,0.97); }
+  #finalMessage h2{ color: var(--warm-gold); text-shadow: 0 0 14px rgba(232,184,75,0.7); }
+  #finalMessage p{ color: #e6d3ad; font-family: 'IM Fell English', serif; font-size: 0.95rem; font-style: italic; }
+ 
+  button.mainBtn{
+    margin-top: 20px;
+    padding: 12px 22px;
+    background: #0c0a08;
+    border: 2px solid var(--blood);
+    border-radius: 4px;
+    color: var(--blood);
+    font-family: 'Creepster', cursive;
+    font-size: 1rem;
+    letter-spacing:1px;
+    cursor:pointer;
+    text-shadow: 0 0 6px rgba(138,15,15,0.7);
+    box-shadow: 0 0 14px rgba(138,15,15,0.35);
+  }
+  button.mainBtn:active{ transform: scale(0.96); }
+  button.warmBtn{
+    border-color: var(--warm-gold);
+    color: var(--warm-gold);
+    text-shadow: 0 0 6px rgba(232,184,75,0.7);
+    box-shadow: 0 0 14px rgba(232,184,75,0.35);
+  }
+ 
+  #tapHint{
+    margin-top: 14px;
+    color:#54503f;
+    font-size: 0.65rem;
+    text-align:center;
+    font-family: 'Nosifer', cursive;
+  }
+</style>
+</head>
+<body>
+ 
+  <h1>LA CASA ABANDONADA</h1>
+  <p class="sub">Mueve el dedo para iluminar · encuentra los 7 objetos antes de que se acabe la luz</p>
+ 
+  <div id="hud">ENCONTRADOS <span id="foundCount">0</span>/7 &nbsp;·&nbsp; PILA 🔋 <span id="batteryPct">100</span>%</div>
+ 
+  <div id="phraseRow"></div>
+ 
+  <div id="gameWrap">
+    <div id="scene">
+      <div class="cobweb" style="top:0;left:0;">🕸️</div>
+      <div class="cobweb" style="top:0;right:0; transform: scaleX(-1);">🕸️</div>
+      <div class="cobweb" style="bottom:0;left:6%; font-size:1.6rem;">🕸️</div>
+      <div class="fogLayer"></div>
+    </div>
+    <div id="darkLayer"></div>
+ 
+    <div id="overlay">
+      <h2>¿TE ATREVES?</h2>
+      <p>La casa está a oscuras. Dicen que alguien dejó algo importante escondido aquí hace tiempo. Tu linterna tiene pila limitada: encuentra los 7 objetos antes de que se apague.</p>
+      <button class="mainBtn" id="startBtn">ENTRAR</button>
+    </div>
+ 
+    <div id="foundCard" class="hidden">
+      <h2 id="foundEmoji">🔑</h2>
+      <p>Has encontrado algo...</p>
+      <div class="word" id="foundWord">PALABRA</div>
+      <p class="note" id="foundNote"></p>
+      <button class="mainBtn" id="foundContinueBtn">Seguir</button>
+    </div>
+ 
+    <div id="twistScreen" class="hidden">
+      <h2>YA NO ESTÁS SOLO</h2>
+      <p>Todo este tiempo, la casa solo guardaba un recuerdo.</p>
+      <div class="phraseFinal" id="phraseFinal"></div>
+      <button class="mainBtn warmBtn" id="openDoorBtn">ABRIR LA PUERTA</button>
+    </div>
+ 
+    <div id="finalMessage" class="hidden">
+      <h2>❤</h2>
+      <p>(Aquí puedes poner vuestra frase, foto o recuerdo real — este es el momento más especial del nivel)</p>
+      <button class="mainBtn warmBtn" id="nextBtn">Continuar</button>
+      <button class="mainBtn warmBtn" id="homeBtn" style="margin-top:10px; background:transparent;">Salir a inicio</button>
+    </div>
+  </div>
+ 
+  <p id="tapHint">👆 Mueve el dedo para iluminar, toca un objeto cuando lo veas para recogerlo</p>
+ 
+<script>
+// ------------------------------------------------------
+// Cada objeto revela UNA PALABRA de una frase secreta.
+// El "slot" (posición en la frase) es fijo, así que aunque
+// el jugador los encuentre en cualquier orden, la frase se
+// reconstruye siempre bien. Cambia las palabras y el emoji
+// por lo que os pegue a vosotros.
+// ------------------------------------------------------
+const OBJECTS = [
+  { key: 'key',    emoji: '🔑', xPct: 18, yPct: 22, word: 'AQUEL' },
+  { key: 'photo',  emoji: '📸', xPct: 78, yPct: 16, word: 'PRIMER' },
+  { key: 'candle', emoji: '🕯️', xPct: 50, yPct: 38, word: 'DÍA' },
+  { key: 'star',   emoji: '⭐', xPct: 25, yPct: 58, word: 'QUE' },
+  { key: 'ring',   emoji: '💍', xPct: 82, yPct: 62, word: 'NOS' },
+  { key: 'gift',   emoji: '🎁', xPct: 40, yPct: 78, word: 'CONOCI' },
+  { key: 'heart',  emoji: '❤️', xPct: 68, yPct: 88, word: 'MOS' },
+];
+ 
+// Notas inquietantes que aparecen tras encontrar ciertos objetos
+// (por número de objetos encontrados hasta el momento, no por cuál).
+const NOTES_AFTER_COUNT = {
+  2: '"No deberías estar aquí."',
+  4: '"Todavía recuerda."',
+  6: '"Busca donde comenzó todo."',
+};
+ 
+const LIGHT_RADIUS = 70;
+const BATTERY_DURATION_S = 45;
+ 
+const gameWrap = document.getElementById('gameWrap');
+const scene = document.getElementById('scene');
+const darkLayer = document.getElementById('darkLayer');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const foundCountEl = document.getElementById('foundCount');
+const batteryPctEl = document.getElementById('batteryPct');
+const foundListEl = document.getElementById('foundList');
+const phraseRow = document.getElementById('phraseRow');
+const foundCard = document.getElementById('foundCard');
+const foundEmoji = document.getElementById('foundEmoji');
+const foundWord = document.getElementById('foundWord');
+const foundNote = document.getElementById('foundNote');
+const foundContinueBtn = document.getElementById('foundContinueBtn');
+const twistScreen = document.getElementById('twistScreen');
+const phraseFinal = document.getElementById('phraseFinal');
+const openDoorBtn = document.getElementById('openDoorBtn');
+const finalMessage = document.getElementById('finalMessage');
+const nextBtn = document.getElementById('nextBtn');
+ 
+const LEVEL_NUM = 4;
+function unlockNext(){
+  const cur = parseInt(localStorage.getItem('regaloProgress') || '1', 10);
+  if (LEVEL_NUM + 1 > cur) localStorage.setItem('regaloProgress', String(LEVEL_NUM + 1));
+}
+ 
+let found = new Set();
+let gameRunning = false;
+let lightX = 0, lightY = 0;
+let battery = 100;
+let batteryInterval = null;
+let flickerT = 0;
+let pendingKey = null;
+ 
+function buildPhraseRow(){
+  phraseRow.innerHTML = '';
+  OBJECTS.forEach((obj, i) => {
+    const span = document.createElement('span');
+    span.className = 'wordSlot';
+    span.id = 'slot-' + obj.key;
+    span.textContent = '_'.repeat(Math.max(3, obj.word.length));
+    phraseRow.appendChild(span);
+  });
+}
+ 
+function buildObjects(){
+  scene.querySelectorAll('.hiddenObject').forEach(el => el.remove());
+  OBJECTS.forEach(obj => {
+    const el = document.createElement('div');
+    el.className = 'hiddenObject';
+    el.textContent = obj.emoji;
+    el.style.left = obj.xPct + '%';
+    el.style.top = obj.yPct + '%';
+    el.dataset.key = obj.key;
+    scene.appendChild(el);
+  });
+}
+ 
+function setLight(clientX, clientY){
+  const rect = gameWrap.getBoundingClientRect();
+  lightX = clientX - rect.left;
+  lightY = clientY - rect.top;
+  renderLight();
+}
+ 
+function renderLight(){
+  const rect = gameWrap.getBoundingClientRect();
+  const xPct = (lightX / rect.width) * 100;
+  const yPct = (lightY / rect.height) * 100;
+  flickerT += 0.15;
+  const flicker = Math.sin(flickerT) * 4 + (Math.random()-0.5)*4;
+  const batteryFactor = 0.4 + (battery/100)*0.6;
+  const radius = Math.max(20, LIGHT_RADIUS * batteryFactor + flicker);
+  darkLayer.style.background =
+    `radial-gradient(circle ${radius}px at ${xPct}% ${yPct}%, transparent 0%, transparent 50%, rgba(2,2,1,0.98) 72%)`;
+}
+ 
+setInterval(() => { if (gameRunning) renderLight(); }, 60);
+ 
+function tryFindNear(clientX, clientY){
+  if (!gameRunning) return;
+  const rect = gameWrap.getBoundingClientRect();
+  const els = scene.querySelectorAll('.hiddenObject');
+  els.forEach(el => {
+    if (found.has(el.dataset.key)) return;
+    const r = el.getBoundingClientRect();
+    const ox = r.left + r.width/2;
+    const oy = r.top + r.height/2;
+    const dist = Math.hypot(clientX - ox, clientY - oy);
+    const distFromLight = Math.hypot((rect.left+lightX) - ox, (rect.top+lightY) - oy);
+    if (dist < 36 && distFromLight < LIGHT_RADIUS){
+      collectObject(el.dataset.key);
+    }
+  });
+}
+ 
+function collectObject(key){
+  const obj = OBJECTS.find(o => o.key === key);
+  const el = scene.querySelector(`[data-key="${key}"]`);
+  found.add(key);
+  el.classList.add('found');
+  foundCountEl.textContent = found.size;
+ 
+  const slot = document.getElementById('slot-' + key);
+  if (slot){ slot.textContent = obj.word; slot.classList.add('revealed'); }
+ 
+  // pausamos el juego (y con ello la pila) para mostrar la palabra encontrada
+  gameRunning = false;
+  foundEmoji.textContent = obj.emoji;
+  foundWord.textContent = obj.word;
+  const note = NOTES_AFTER_COUNT[found.size];
+  foundNote.textContent = note ? note : '';
+  foundCard.classList.remove('hidden');
+}
+ 
+foundContinueBtn.addEventListener('click', () => {
+  foundCard.classList.add('hidden');
+  if (found.size >= OBJECTS.length){
+    triggerTwist();
+  } else {
+    gameRunning = true;
+  }
+});
+ 
+gameWrap.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const t = e.touches[0];
+  setLight(t.clientX, t.clientY);
+}, { passive:false });
+ 
+gameWrap.addEventListener('touchstart', (e) => {
+  const t = e.touches[0];
+  setLight(t.clientX, t.clientY);
+  tryFindNear(t.clientX, t.clientY);
+}, { passive:false });
+ 
+gameWrap.addEventListener('mousemove', (e) => setLight(e.clientX, e.clientY));
+gameWrap.addEventListener('click', (e) => tryFindNear(e.clientX, e.clientY));
+ 
+function tickBattery(){
+  if (!gameRunning) return;
+  battery -= 100 / BATTERY_DURATION_S;
+  if (battery <= 0){
+    battery = 0;
+    batteryPctEl.textContent = 0;
+    outOfBattery();
+    return;
+  }
+  batteryPctEl.textContent = Math.ceil(battery);
+}
+ 
+function outOfBattery(){
+  gameRunning = false;
+  clearInterval(batteryInterval);
+  overlay.classList.remove('hidden');
+  overlay.innerHTML = `
+    <h2>SE FUE LA LUZ...</h2>
+    <p>La linterna se ha quedado sin pila. Encontraste ${found.size}/${OBJECTS.length} objetos.</p>
+    <button class="mainBtn" id="retryBtn">REINTENTAR</button>
+  `;
+  document.getElementById('retryBtn').addEventListener('click', startGame);
+}
+ 
+function triggerTwist(){
+  clearInterval(batteryInterval);
+  darkLayer.classList.add('off');
+  document.body.classList.add('lights-on');
+  unlockNext();
+  phraseFinal.textContent = OBJECTS.map(o => o.word).join(' ');
+  setTimeout(() => {
+    twistScreen.classList.remove('hidden');
+  }, 900);
+}
+ 
+openDoorBtn.addEventListener('click', () => {
+  twistScreen.classList.add('hidden');
+  finalMessage.classList.remove('hidden');
+});
+ 
+nextBtn.addEventListener('click', () => {
+  window.location.href = "nivel5-mapa.html";
+});
+document.getElementById('homeBtn').addEventListener('click', () => {
+  window.location.href = "index.html";
+});
+ 
+function startGame(){
+  overlay.classList.add('hidden');
+  document.body.classList.remove('lights-on');
+  darkLayer.classList.remove('off');
+  found = new Set();
+  battery = 100;
+  batteryPctEl.textContent = 100;
+  foundCountEl.textContent = 0;
+  buildPhraseRow();
+  buildObjects();
+  gameRunning = true;
+ 
+  const rect = gameWrap.getBoundingClientRect();
+  setLight(rect.left + rect.width/2, rect.top + rect.height/2);
+ 
+  clearInterval(batteryInterval);
+  batteryInterval = setInterval(tickBattery, 1000);
+}
+ 
+startBtn.addEventListener('click', startGame);
+ 
+buildPhraseRow();
+buildObjects();
+</script>
+ 
+</body>
+</html>

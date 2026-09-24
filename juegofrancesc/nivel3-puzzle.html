@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ARCHIVO 001 — Nivel 3: El Puzzle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Comic+Neue:wght@700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper: #f3e8cf;
+    --ink: #1a1a1a;
+    --comic-red: #e8384f;
+    --comic-blue: #2b6bd6;
+    --comic-yellow: #ffd23f;
+    --shelf: #6b4226;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body{ height:100%; }
+  body{
+    margin:0;
+    min-height:100%;
+    background:
+      repeating-linear-gradient(0deg, #7a5333 0px, #7a5333 60px, #6b4226 60px, #6b4226 64px),
+      #6b4226;
+    color: var(--ink);
+    font-family: 'Comic Neue', sans-serif;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 16px 12px 24px;
+    touch-action: none;
+  }
+  h1{
+    font-family: 'Bangers', cursive;
+    font-size: 1.8rem;
+    letter-spacing: 1px;
+    color: var(--comic-yellow);
+    -webkit-text-stroke: 2px var(--ink);
+    margin: 4px 0;
+    text-align:center;
+  }
+  p.sub{
+    color: #fff;
+    background: var(--comic-red);
+    border: 2px solid var(--ink);
+    border-radius: 20px;
+    padding: 4px 14px;
+    margin-top:0;
+    margin-bottom: 14px;
+    font-size:.8rem;
+    font-weight:700;
+    text-align:center;
+  }
+  #hud{
+    margin-bottom: 10px;
+    font-size: 1rem;
+    font-weight:700;
+    color: var(--paper);
+    background: var(--ink);
+    padding: 4px 14px;
+    border-radius: 14px;
+  }
+ 
+  #gameWrap{
+    position: relative;
+    border: 5px solid var(--ink);
+    border-radius: 10px;
+    background: var(--paper);
+    width: 100%;
+    max-width: 380px;
+    padding: 10px;
+    box-shadow: 8px 8px 0 var(--ink);
+    /* puntos de trama estilo cómic en el fondo del marco */
+    background-image: radial-gradient(var(--ink) 1px, transparent 1px);
+    background-size: 10px 10px;
+    background-position: -4px -4px;
+  }
+  #innerPaper{
+    background: #fff;
+    border: 3px solid var(--ink);
+    border-radius: 6px;
+    padding: 6px;
+  }
+ 
+  #puzzleGrid{
+    display:grid;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(5, 1fr);
+    gap: 2px;
+    aspect-ratio: 4 / 3;
+    width: 100%;
+    background: var(--ink);
+    border: 2px solid var(--ink);
+  }
+ 
+  .piece{
+    background-image: url('fotopuzle.jpg');
+    background-size: 500% 500%; /* 5x5 piezas */
+    cursor: pointer;
+    border: 2px solid transparent;
+    position:relative;
+  }
+  .piece.selected{
+    border-color: var(--comic-red);
+    outline: 2px dashed var(--comic-red);
+    outline-offset: -3px;
+  }
+ 
+  #overlay{
+    position:absolute;
+    inset:0;
+    background: rgba(26,26,26,0.94);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding: 20px;
+    border-radius: 6px;
+  }
+  #overlay.hidden{ display:none; }
+  #overlay h2{ font-family:'Bangers', cursive; color: var(--comic-yellow); font-size: 1.4rem; margin-bottom: 10px; }
+  #overlay p{ color:#fff; max-width: 280px; line-height:1.5; font-size:.85rem;}
+  button.mainBtn{
+    margin-top: 18px;
+    padding: 12px 26px;
+    background: var(--comic-yellow);
+    border: 3px solid var(--ink);
+    border-radius: 10px;
+    color: var(--ink);
+    font-family: 'Bangers', cursive;
+    font-size: 1.1rem;
+    letter-spacing:1px;
+    cursor:pointer;
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  button.mainBtn:active{ transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--ink); }
+ 
+  #tapHint{
+    margin-top: 16px;
+    color:#f3e8cf;
+    font-size:.8rem;
+    text-align:center;
+    font-weight:700;
+  }
+</style>
+</head>
+<body>
+ 
+  <h1>¡EL PUZZLE!</h1>
+  <p class="sub">Toca dos piezas para intercambiarlas</p>
+ 
+  <div id="hud">Movimientos: <span id="moveCount">0</span></div>
+ 
+  <div id="gameWrap">
+    <div id="innerPaper">
+      <div id="puzzleGrid"></div>
+    </div>
+ 
+    <div id="overlay">
+      <h2>¡A ORDENAR!</h2>
+      <p>Las piezas están desordenadas. Tócalas de dos en dos para intercambiarlas hasta reconstruir la foto.</p>
+      <button class="mainBtn" id="startBtn">JUGAR</button>
+    </div>
+  </div>
+ 
+  <p id="tapHint">👆 Toca una pieza y luego otra para intercambiarlas</p>
+ 
+<script>
+const GRID_SIZE = 5;
+const TOTAL = GRID_SIZE * GRID_SIZE;
+ 
+let order = [];
+let selected = null;
+let moves = 0;
+let gameRunning = false;
+ 
+const gridEl = document.getElementById('puzzleGrid');
+const overlay = document.getElementById('overlay');
+const startBtn = document.getElementById('startBtn');
+const moveCountEl = document.getElementById('moveCount');
+ 
+const LEVEL_NUM = 3;
+function unlockNext(){
+  const cur = parseInt(localStorage.getItem('regaloProgress') || '1', 10);
+  if (LEVEL_NUM + 1 > cur) localStorage.setItem('regaloProgress', String(LEVEL_NUM + 1));
+}
+ 
+function shuffledOrder(){
+  const arr = [...Array(TOTAL).keys()];
+  do {
+    for (let i = arr.length - 1; i > 0; i--){
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+  } while (arr.every((v, i) => v === i));
+  return arr;
+}
+ 
+// posición de fondo (en %) para que la pieza "pieceNum" muestre su trozo
+// correcto de la imagen, sea cual sea la posición donde esté colocada
+function bgPosFor(pieceNum){
+  const col = pieceNum % GRID_SIZE;
+  const row = Math.floor(pieceNum / GRID_SIZE);
+  const x = (col / (GRID_SIZE - 1)) * 100;
+  const y = (row / (GRID_SIZE - 1)) * 100;
+  return `${x}% ${y}%`;
+}
+ 
+function render(){
+  gridEl.innerHTML = '';
+  order.forEach((pieceNum, pos) => {
+    const div = document.createElement('div');
+    div.className = 'piece';
+    div.style.backgroundPosition = bgPosFor(pieceNum);
+    div.dataset.pos = pos;
+    if (selected === pos) div.classList.add('selected');
+    div.addEventListener('click', () => handlePick(pos));
+    gridEl.appendChild(div);
+  });
+}
+ 
+function handlePick(pos){
+  if (!gameRunning) return;
+ 
+  if (selected === null){
+    selected = pos;
+    render();
+    return;
+  }
+  if (selected === pos){
+    selected = null;
+    render();
+    return;
+  }
+ 
+  [order[selected], order[pos]] = [order[pos], order[selected]];
+  moves++;
+  moveCountEl.textContent = moves;
+  selected = null;
+  render();
+  checkWin();
+}
+ 
+function checkWin(){
+  if (order.every((v, i) => v === i)){
+    winLevel();
+  }
+}
+ 
+function winLevel(){
+  gameRunning = false;
+  unlockNext();
+  overlay.classList.remove('hidden');
+  overlay.innerHTML = `
+    <h2>¡COMPLETADO!</h2>
+    <p>Has reconstruido la foto en ${moves} movimientos.<br><br>
+    <em>Fragmento 03 conseguido</em></p>
+    <button class="mainBtn" id="nextBtn">CONTINUAR</button>
+    <button class="mainBtn" id="homeBtn" style="margin-top:10px; background:transparent;">SALIR A INICIO</button>
+  `;
+  document.getElementById('nextBtn').addEventListener('click', () => {
+    window.location.href = "nivel4-linterna.html";
+  });
+  document.getElementById('homeBtn').addEventListener('click', () => {
+    window.location.href = "index.html";
+  });
+}
+ 
+function startGame(){
+  overlay.classList.add('hidden');
+  order = shuffledOrder();
+  selected = null;
+  moves = 0;
+  moveCountEl.textContent = 0;
+  gameRunning = true;
+  render();
+}
+ 
+startBtn.addEventListener('click', startGame);
+ 
+order = [...Array(TOTAL).keys()];
+render();
+</script>
+ 
+</body>
+</html>
+ 
